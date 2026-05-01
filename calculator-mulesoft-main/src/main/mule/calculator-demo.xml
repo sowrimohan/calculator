@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:wsc="http://www.mulesoft.org/schema/mule/wsc" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns="http://www.mulesoft.org/schema/mule/core" 
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" 
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+	xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/wsc http://www.mulesoft.org/schema/mule/wsc/current/mule-wsc.xsd">
+
+	<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="5fb7d793-c25f-4e68-a88c-4a70aaab4cf3">
+		<http:listener-connection host="0.0.0.0" port="8081" />
+	</http:listener-config>
+
+	<wsc:config name="Web_Service_Consumer_Config" doc:name="Web Service Consumer Config" doc:id="82136c5c-2e48-403b-a7d0-78d56f69ce0c">
+		<wsc:connection 
+			wsdlLocation="calculator.wsdl" 
+			service="Calculator" 
+			port="CalculatorSoap" 
+			address="http://www.dneonline.com/calculator.asmx">
+		</wsc:connection>
+	</wsc:config>
+
+	<flow name="calculator-demoFlow" doc:id="68def949-00ea-4e01-a53e-530c4eae41d8">
+		<http:listener doc:name="Listener" doc:id="74c1c886-133e-4e78-825b-f68cb248ec8e" 
+			config-ref="HTTP_Listener_config" path="/hi"/>
+		<choice doc:name="Choice" doc:id="57dc5829-72b2-4711-a8f6-339e2ba05044">
+			<when expression="#[payload.operation == 'add']">
+				<flow-ref doc:name="Flow Reference" doc:id="9e5b60aa-cb72-4565-bbd8-bf7111bcbad8" name="add-subflow"/>
+			</when>
+			<when expression="#[payload.operation == 'subtract']">
+				<flow-ref doc:name="Flow Reference" doc:id="6d541cf4-a08f-477b-a452-14fb3a38f1c5" name="subtract-subflow"/>
+			</when>
+			<when expression="#[payload.operation==Divide]">
+				<flow-ref doc:name="Flow Reference" doc:id="39abfffb-8c4b-4bd1-b47c-f9e212491785" name="divide_subFlow"/>
+			</when>
+		</choice>
+	</flow>
+
+	<sub-flow name="divide_subFlow" doc:id="13603f84-6b18-417d-aead-f2cdc0a63df9" >
+		<ee:transform doc:name="Transform Message" doc:id="81a9b531-59ec-43fe-8f79-a42bf0ce7c15" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/xml
+ns ns0 http://tempuri.org/
+---
+{
+    ns0#Divide: {
+        ns0#intA: payload.a,
+        ns0#intB: payload.b
+    }
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<wsc:consume doc:name="Consume" doc:id="e2aad5a1-3f4b-4d29-a58d-8cf942a0bb8a" config-ref="Web_Service_Consumer_Config" operation="Divide"/>
+		<ee:transform doc:name="Transform Message" doc:id="c81d8196-ba3f-4d3b-ae44-209f9f4762c6" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+ns ns0 http://tempuri.org/
+---
+{
+    operation: "Divide",
+    result: payload.body.ns0#DivideResponse.ns0#DivideResult
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</sub-flow>
+	<sub-flow name="add-subflow" doc:id="104e4554-2c5d-469f-9435-3677f0199f85">
+		<ee:transform doc:name="Transform Message" doc:id="f4274b6d-5506-4046-8949-7914a5ba5d20">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/xml
+ns ns0 http://tempuri.org/
+---
+{
+    ns0#Add: {
+        ns0#intA: payload.a,
+        ns0#intB: payload.b
+    }
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<wsc:consume doc:name="Consume" doc:id="cd849394-f13a-463f-8879-e05e4b9abb1d" 
+			config-ref="Web_Service_Consumer_Config" operation="Add"/>
+		<ee:transform doc:name="Transform Message" doc:id="609e81ce-3a9b-4ae2-ad67-40284daa5a1e">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+ns ns0 http://tempuri.org/
+---
+{
+    operation: "add",
+    result: payload.body.ns0#AddResponse.ns0#AddResult
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</sub-flow>
+
+	<sub-flow name="subtract-subflow" doc:id="b5b1cb91-19bd-4723-b375-eb1d5230e9e1">
+		<ee:transform doc:name="Transform Message" doc:id="3a3c6ce0-0e88-4702-b246-6cd0a24bb885">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/xml
+ns ns0 http://tempuri.org/
+---
+{
+    ns0#Subtract: {
+        ns0#intA: payload.a,
+        ns0#intB: payload.b
+    }
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<wsc:consume doc:name="Consume" doc:id="17f9ea82-e717-4f37-8bcc-ed553eb25b5c" 
+			config-ref="Web_Service_Consumer_Config" operation="Subtract"/>
+		<ee:transform doc:name="Transform Message" doc:id="df65f7ba-689f-483f-8c6c-19d6a01ce9d2">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+ns ns0 http://tempuri.org/
+---
+{
+    operation: "subtract",
+    result: payload.body.ns0#SubtractResponse.ns0#SubtractResult
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</sub-flow>
+
+</mule>
